@@ -30,6 +30,11 @@ and factory settings.
                         that continiues on the next line) are concatenated
                         before actual programming
 
+  -p|--prepare-only     Copy all required components to tftp folder 
+                        but do not launch sam-ba programming; This option
+                        is usefull if you intend to re-flash the device
+                        from u-boot console
+
   -h|--help             show this information
 
   -v|--version          show version information
@@ -84,11 +89,21 @@ sync_image()
 
 program_name=`basename "$0"`
 
-#TODO cd to scripts directory
+# ICDTCP3_SCRIPT_DIR is required to locate icdtcp3.tcl and
+#icdtcp3-flash-script.txt scripts and also to read scripts version
+test "x${ICDTCP3_SCRIPTS_DIR}" != "x" || \
+  error "Missing ICDTCP3_SCRIPTS_DIR environment variable"
 
-#version=`git describe --dirty | sed -e 's/^v\(.*\)$/\1/'`
-#TODO read version
-version="0.0"
+# ICDTCP3_TFTP_DIR is also required by icdtcp3.tcl script
+test "x${ICDTCP3_TFTP_DIR}" != "x" || \
+  error "Missing ICDTCP3_TFTP_DIR environment variable"
+
+# go to scripts directory in order to be able to read scripts version
+# (by means of git describe command)
+cd "${ICDTCP3_SCRIPTS_DIR}"
+test $? -eq 0 || error "Changing directory to '${ICDTCP3_SCRIPTS_DIR}' failed"
+
+version=`git describe --dirty | sed -e 's/^v\(.*\)$/\1/'`
 
 if [ "x${ICDTCP3_SAM_BA_DIR}" != "x" ]; then
   samba_dev="${ICDTCP3_SAM_BA_DIR}"
@@ -97,8 +112,9 @@ else
 fi
 
 release_dir="${ICDTCP3_RELEASE_DIR}"
+prepare_only="no"
 
-options=`getopt -o s:d:f:hv --long samba-device:,release-dir:,factory-settings:,help,version -- "$@"`
+options=`getopt -o s:d:f:phv --long samba-device:,release-dir:,factory-settings:,prepare-only,help,version -- "$@"`
 test $? -eq 0 || error "Parsing parameters failed"
 eval set -- "$options"
 while true ; do
@@ -106,6 +122,7 @@ while true ; do
     -s|--samba-device) samba_dev="$2"; shift 2 ;;
     -d|--release-dir) release_dir=`eval cd "$2" && pwd`; shift 2 ;;
     -f|--factory-settings) fs_file="$2"; shift 2 ;;
+    -p|--prepare-only) prepare_only="yes"; shift 1 ;;
     -h|--help) print_usage; exit 0 ;;
     -v|--version) print_version; exit 0 ;;
     --) shift; break ;;
@@ -116,15 +133,6 @@ done
 test "x$1" = "x" || error "Parsing parameters failed at '$1'"
 
 test "x${release_dir}" != "x" || error "Missing release-dir parameter"
-
-# ICDTCP3_SCRIPT_DIR is required to locate icdtcp3.tcl
-# and icdtcp3-flash-script.txt scripts
-test "x${ICDTCP3_SCRIPTS_DIR}" != "x" || \
-  error "Missing ICDTCP3_SCRIPTS_DIR environment variable"
-
-# ICDTCP3_TFTP_DIR is also required by icdtcp3.tcl script
-test "x${ICDTCP3_TFTP_DIR}" != "x" || \
-  error "Missing ICDTCP3_TFTP_DIR environment variable"
 
 # Copy required binaries from RELEASE directory into TFTP directory
 sync_image "${release_dir}/at91bootstrap*.bin" \
@@ -157,6 +165,7 @@ if [ "x${fs_file}" != "x" ]; then
 else
   cat /dev/null > "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
 fi
+echo "icdtcp3-flash-version=${version}" >> "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
 
 # Create flash script image
 info "Creating flash-script..."
@@ -173,9 +182,11 @@ mkimage -A arm -O linux -T script -C none -n "flash-script" \
 test $? -eq 0 || error "Creating flash-script failed"
 
 # Run sam-ba to flash at91bootstrap and u-boot
-info "Running sam-ba..."
-sam-ba ${ICDTCP3_SAM_BA_MODEM} at91sam9260-ek ${ICDTCP3_SCRIPTS_DIR}/icdtcp3.tcl
-test $? -eq 0 || error "Running sam-ba failed"
+if [ "${prepare_only}" = "no" ]; then
+  info "Running sam-ba..."
+  sam-ba ${ICDTCP3_SAM_BA_MODEM} at91sam9260-ek ${ICDTCP3_SCRIPTS_DIR}/icdtcp3.tcl
+  test $? -eq 0 || error "Running sam-ba failed"
+fi
 
 rm "${TMP_FILE}"
 

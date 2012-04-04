@@ -1,7 +1,7 @@
 set icdtcp3_tftp_dir "$env(ICDTCP3_TFTP_DIR)"
 
-set bootstrapFile "$icdtcp3_tftp_dir/at91bootstrap-icdtcp3.bin"
-set ubootFile "$icdtcp3_tftp_dir/u-boot-icdtcp3.bin"	
+set bootstrapFile "$icdtcp3_tftp_dir/at91bootstrap.bin"
+set ubootFile "$icdtcp3_tftp_dir/u-boot.bin"	
 set ubootAddr 0x00080000
 
 puts "-I- === Initialize the NAND access ==="
