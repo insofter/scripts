@@ -1,0 +1,113 @@
+# This file is intended to be 'compiled' into a u-boot script image
+# with mkimage tool and used during initial flashing of a icdtcp3 device.
+# It will set up all necessry partitions and environment variables.
+#
+# Note: u-boot mkimage tool doesn't strip comments (lines beginning with #)
+# and also doesn't support "\" line breakings. Before invoking mkimage
+# filter them out. E.g.:
+#
+# cat flasher-icdtcp3.txt | \
+#   sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e '/^$/ d' | \
+#   sed -e '/[\]$/ { N; s:[\]\n:: }' > flasher-icdtcp3.tmp
+#
+# And build the image with the following command:
+#
+# mkimage -A arm -O linux -T script -C none -n "flasher-icdtcp3" \
+#  -d flasher-icdtcp3.tmp flasher-icdtcp3.img
+
+echo 
+echo '-------------------------------------------------'
+echo 'Setting up mtd partitions'
+mtdparts default
+
+echo 
+echo '-------------------------------------------------'
+echo 'Initializing ubi on mtd system partition'
+ubi part system
+
+echo 
+echo '-------------------------------------------------'
+echo 'Creating ubi system volumes'
+ubi createvol bootcfg 0x40000 static
+ubi createvol bootcfg-aux 0x40000 static
+ubi createvol uImage-a 0x400000 static
+ubi createvol uImage-b 0x400000 static
+ubi createvol rootfs-a 0x2000000 dynamic
+ubi createvol rootfs-b 0x2000000 dynamic
+
+echo 
+echo '-------------------------------------------------'
+echo 'Writing bootcfg'
+env set ubi-boot-vol a;
+env export -t ${loadaddr} ubi-boot-vol;
+ubi writevol ${loadaddr} bootcfg 0xE'
+env set ubi-boot-vol;
+
+echo 
+echo '-------------------------------------------------'
+echo 'Writing kernel uImage'
+tftp ${loadaddr} uImage-icdtcp3
+ubi writevol ${fileaddr} uImage-a ${filesize}
+ubi writevol ${fileaddr} uImage-b ${filesize}
+
+echo 
+echo '-------------------------------------------------'
+echo 'Writing rootfs'
+tftp ${loadaddr} rootfs-icdtcp3.ubifs
+ubi writevol ${fileaddr} rootfs-a ${filesize}
+ubi writevol ${fileaddr} rootfs-b ${filesize}
+
+echo 
+echo '-------------------------------------------------'
+echo 'Initializing ubi on mtd data partition'
+ubi part data
+
+echo 
+echo '-------------------------------------------------'
+echo 'Creating ubi data volume'
+ubi createvol data # by default this is dynamic volume 
+                   # occpying the whole partition
+
+echo 
+echo '-------------------------------------------------'
+echo 'Writing data'
+tftp ${loadaddr} data-icdtcp3.ubifs
+ubi writevol ${fileaddr} data ${filesize}
+
+echo 
+echo '-------------------------------------------------'
+echo 'Loading factory settings'
+tftp ${loadaddr} factory-settings-icdtcp3.txt
+env import -t ${loadaddr} ${filesize}
+
+
+echo 
+echo '-------------------------------------------------'
+echo 'Setting up boot commands'
+env set save-bootcfg 'env export -t ${loadaddr} ubi-boot-vol; \
+  ubi writevol ${loadaddr} bootcfg 0xE'
+env set set-bootcfg-a 'ubi part system; env set ubi-boot-vol a; \
+  run save-bootcfg'
+env set set-bootcfg-b 'ubi part system; env set ubi-boot-vol b; \
+  run save-bootcfg'
+env set load-bootcfg 'ubi readvol ${loadaddr} bootcfg; \
+  env import -t ${loadaddr} 0xE; env print ubi-boot-vol'
+env set setup-bootargs 'env set bootargs mem=64M console=ttyS0,115200 \
+  ubi.mtd=3 ubi.mtd=4 root=ubi0:rootfs-${ubi-boot-vol} rootfstype=ubifs'
+env set bootcmd 'ubi part system; run load-bootcfg; run setup-bootargs; \
+  ubi readvol ${loadaddr} uImage-${ubi-boot-vol}; bootm'
+
+echo 
+echo '-------------------------------------------------'
+echo 'Saving environment'
+env set fileaddr
+env set filesize
+env save
+
+echo 
+echo '-------------------------------------------------'
+echo 'DONE'
+echo 
+echo 
+
+reset
