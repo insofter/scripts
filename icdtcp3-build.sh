@@ -202,6 +202,9 @@ test $? -eq 0 || error "Building ${build_version} failed"
 icdtcp3-make-package.sh
 test $? -eq 0 || error "Building ${build_version} package failed"
 
+icdtcp3-make-updpkg.sh
+test $? -eq 0 || error "Building ${build_version} update package failed"
+
 info "Done"
 
 exit 0
