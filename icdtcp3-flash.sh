@@ -4,22 +4,19 @@ print_usage()
 {
 >&2 cat <<EOF
 
-Usage: ${program_name} [-s|--samba-device DEVICE] [-d|--release-dir DIR]
-  [-f|--factory-settings FILE] [-h|--help] [-v|--version]
+Usage: ${program_name} [-s|--samba-device DEVICE] [-f|--factory-settings FS_FILE]
+  [-p|--prepare-only] PACKAGE_FILE
+  [-h|--help] [-v|--version]
 
 Runs initial device programming cycle - erases flash and flashes all 
-neccessary components (at91bootstrap, u-boot, kernel and rootfs).
-Also sets up all necessary u-boot commands, environment variables
-and factory settings.
+neccessary components (at91bootstrap, u-boot, kernel, rootfs, datafs)
+from PACKAGE_FILE. Package file is a bzipped tar archive built during
+icdtcp3 build process. Sets up all necessary u-boot commands,
+environment variables and factory settings.
 
   -s|--samba-device     samba modem device; default is read from
                         ICDTCP3_SAM_BA_MODEM environment variable;
                         if missing '/dev/ttyACM0' is used
-
-  -d|--release-dir      release directory where all binaries resides;
-                        default is read from ICDTCP3_RELEASE_DIR
-                        environment variable; if missing an error
-                        is returned
 
   -f|--factory-settings file containging factory settings to be
                         programmed on the device; each line in the file
@@ -65,54 +62,23 @@ error()
   fi
 }
 
-# $1 source file
-# $2 destination file
-sync_image()
+script_version()
 {
-  local src_file dst_file count file
-  src_file="$1"
-  dst_file="$2"
-
-  count=`eval ls -1 "${src_file}" | wc -l`
-  if [ ${count} -eq 0 ]; then
-    error "No file matches '${src_file}'" noexit;
-    return 1
-  elif [ ${count} -gt 1 ]; then
-    error "Too many files matching '${src_file}'" noexit;
-    return 1
+  # Go to scripts directory in order to find out the script version
+  if [ "x${ICDTCP3_SCRIPTS_DIR}" != "x" ]; then
+    cd "${ICDTCP3_SCRIPTS_DIR}"
+    if [ $? -eq 0 ]; then
+      printf "%s" `git describe --dirty | sed -e 's/^v//' -e 's/+/-/g'`
+    else
+      printf "?"
+    fi
+  else
+    printf "?"
   fi
-
-  file=`eval ls -1 "${src_file}"`
-  info "Synchronizing '`basename "${file}"`'..."
-  rsync -a "${file}" "${dst_file}"
 }
 
 program_name=`basename "$0"`
-
-# ICDTCP3_SCRIPT_DIR is required to locate icdtcp3.tcl and
-#icdtcp3-flash-script.txt scripts and also to read scripts version
-test "x${ICDTCP3_SCRIPTS_DIR}" != "x" || \
-  error "Missing ICDTCP3_SCRIPTS_DIR environment variable"
-
-# ICDTCP3_TFTP_DIR is also required by icdtcp3.tcl script
-test "x${ICDTCP3_TFTP_DIR}" != "x" || \
-  error "Missing ICDTCP3_TFTP_DIR environment variable"
-
-# go to scripts directory in order to be able to read scripts version
-# (by means of git describe command)
-cd "${ICDTCP3_SCRIPTS_DIR}"
-test $? -eq 0 || error "Changing directory to '${ICDTCP3_SCRIPTS_DIR}' failed"
-
-version=`git describe --dirty | sed -e 's/^v\(.*\)$/\1/'`
-
-if [ "x${ICDTCP3_SAM_BA_DIR}" != "x" ]; then
-  samba_dev="${ICDTCP3_SAM_BA_DIR}"
-else
-  samba_dev="/dev/ttyACM0"
-fi
-
-release_dir="${ICDTCP3_RELEASE_DIR}"
-prepare_only="no"
+version=$(script_version)
 
 options=`getopt -o s:d:f:phv --long samba-device:,release-dir:,factory-settings:,prepare-only,help,version -- "$@"`
 test $? -eq 0 || error "Parsing parameters failed"
@@ -120,7 +86,6 @@ eval set -- "$options"
 while true ; do
   case "$1" in
     -s|--samba-device) samba_dev="$2"; shift 2 ;;
-    -d|--release-dir) release_dir=`eval cd "$2" && pwd`; shift 2 ;;
     -f|--factory-settings) fs_file="$2"; shift 2 ;;
     -p|--prepare-only) prepare_only="yes"; shift 1 ;;
     -h|--help) print_usage; exit 0 ;;
@@ -130,30 +95,32 @@ while true ; do
   esac
 done
 
+test "x$1" != "x" || error "Parsing parameters faield. Missing parameter PACKAGE_FILE"
+package_file="$1"; shift 1
+
 test "x$1" = "x" || error "Parsing parameters failed at '$1'"
 
-test "x${release_dir}" != "x" || error "Missing release-dir parameter"
+if [ "x${samba_dev}" = "x" ]; then
+  if [ "x${ICDTCP3_SAM_BA_DIR}" != "x" ]; then
+    samba_dev="${ICDTCP3_SAM_BA_DIR}"
+  else
+    samba_dev="/dev/ttyACM0"
+  fi
+fi
 
-# Copy required binaries from RELEASE directory into TFTP directory
-sync_image "${release_dir}/at91bootstrap*.bin" \
-  "${ICDTCP3_TFTP_DIR}/at91bootstrap.bin"
-test $? -eq 0 || error "Synchronization failed"
+if [ "x${prepare_only}" != "xyes" ]; then
+  prepare_only="no"
+fi
 
-sync_image "${release_dir}/u-boot*.bin" \
-  "${ICDTCP3_TFTP_DIR}/u-boot.bin"
-test $? -eq 0 || error "Synchronization failed"
+# ICDTCP3_TFTP_DIR environment variable must exists;
+# Is is also required by icdtcp3.tcl script
+test "x${ICDTCP3_TFTP_DIR}" != "x" || \
+  error "Missing ICDTCP3_TFTP_DIR environment variable"
 
-sync_image "${release_dir}/uImage*" \
-  "${ICDTCP3_TFTP_DIR}/uImage"
-test $? -eq 0 || error "Synchronization failed"
-
-sync_image "${release_dir}/rootfs*.ubifs" \
-  "${ICDTCP3_TFTP_DIR}/rootfs.ubifs"
-test $? -eq 0 || error "Synchronization failed"
-
-sync_image "${release_dir}/data*.ubifs" \
-  "${ICDTCP3_TFTP_DIR}/data.ubifs"
-test $? -eq 0 || error "Synchronization failed"
+# Extract package files to tftp directory
+info "Extracting package files to tftp directory..."
+tar -C "${ICDTCP3_TFTP_DIR}" -xjf "${package_file}"
+test $? -eq 0 || error "Extracting '${package_file}' package files failed"
 
 # Prepare factory settings file
 info "Preparing factory settings..."
@@ -171,12 +138,10 @@ echo "icdtcp3-flash-version=${version}" >> "${ICDTCP3_TFTP_DIR}/factory-settings
 info "Creating flash-script..."
 TMP_FILE=`mktemp`
 test $? -eq 0 || error "Creating temporary file failed"
-
 cat ${ICDTCP3_SCRIPTS_DIR}/icdtcp3-flash-script.txt | \
   sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e '/^$/ d' | \
   sed -e '/[\]$/ { N; s:[\]\n:: }' > ${TMP_FILE}
 test $? -eq 0 || error "Preparing icdtcp3-flash-script.txt failed"
-
 mkimage -A arm -O linux -T script -C none -n "flash-script" \
   -d ${TMP_FILE} ${ICDTCP3_TFTP_DIR}/flash-script.img
 test $? -eq 0 || error "Creating flash-script failed"

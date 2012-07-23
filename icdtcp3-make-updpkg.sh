@@ -4,16 +4,16 @@ print_usage()
 {
 >&2 cat <<EOF
 
-Usage: ${program_name} [-d|--release-dir DIR]
+Usage: ${program_name}  [-d|--release-dir DIR]
   [-h|--help] [-v|--version]
 
-Creates icdtcp3 release package, a bzipped archive containging all flashable
-binaries plus version header. This tool expects ICDTCP3_SCRIPTS_DIR,
+Creates icdtcp3 update package, an archive with compressed binary images
+if linux kernel and rootfs. This tool expects ICDTCP3_SCRIPTS_DIR,
 ICDTCP3_WORKING_DIR and ICDTCP3_BUILD_DIR  environment variables to be defined.
 
   -d|--release-dir      release directory where to put resulting archive
-  -h|--help             show this information
-  -v|--version          show version information
+  -h|--help       show this information
+  -v|--version    show version information
 
 EOF
 }
@@ -56,6 +56,51 @@ script_version()
   fi
 }
 
+add_image()
+{
+  local image_name image_version image_ifile image_ofile 
+  local image_compression output_dir size compressor
+
+  image_name="$1"
+  image_version="$2"
+  image_ifile="$3"
+  image_ofile="$4"
+  image_compression="$5"
+  output_dir="$6"
+
+  size=`stat --format=%s ${image_ifile}`
+  test $? -eq 0 || { error "stat '${image_ifile}' failed" noexit; return 1; }
+ 
+  # Figure out what compression tool to use
+  case "${image_compression}" in
+    none) compressor="cat" ;;
+    gzip) compressor="gzip -c" ;;
+    bzip2) compressor="bzip2 -c" ;;
+    lzma) compressor="lzma -c" ;;
+    *) error "Invalid or unsupported compression '${image_compression}'" noexit
+      return 1 ;;
+  esac
+
+  # Copy image to output location and compress
+  ${compressor} "${image_ifile}" > "${output_dir}/${image_ofile}"
+  test $? -eq 0 || { error "Compressing '${image_name}' failed" "noexit"; return 1; }
+
+  # Update output header file
+  echo "${image_name}=${image_ofile}" >> "${output_dir}/header"
+  test $? -eq 0 || { error "Updating header failed" "noexit"; return 1; }
+
+  echo "${image_name}-version=${image_version}" >> "${output_dir}/header"
+  test $? -eq 0 || { error "Updating header failed" "noexit"; return 1; }
+ 
+  echo "${image_name}-size=${size}" >> "${output_dir}/header"
+  test $? -eq 0 || { error "Updating header failed" "noexit"; return 1; }
+
+  echo "${image_name}-compression=${image_compression}" >> "${output_dir}/header"
+  test $? -eq 0 || { error "Updating header failed" "noexit"; return 1; }
+
+  return 0
+}
+
 program_name=`basename "$0"`
 version=$(script_version)
 
@@ -93,7 +138,7 @@ test -n "${package_version}" || error "Reading package version failed"
 temp_dir=`mktemp -d`
 test $? -eq 0 || error "Creating temporary directory '${temp_dir}' failed"
 
-info "Building '${package_version}' package"
+info "Building '${package_version}' update package"
 
 info "Creating package header..."
 echo "version=${package_version}" > "${temp_dir}/header"
@@ -101,43 +146,26 @@ icd_version=`cat "${working_dir}/buildroot/package/icd/icd.mk" | \
   sed -n -e 's/^ICD_VERSION[[:space:]]*=[[:space:]]*\([[:alnum:].-]*\).*$/\1/p'`
 test -n "${icd_version}" || error "Reading icd version failed"
 echo "version-icd=${icd_version}" >> "${temp_dir}/header"
-at91bootstrap_version=`cat "${working_dir}/buildroot/boot/at91bootstrap/at91bootstrap.mk" | \
-  sed -n -e 's/^AT91BOOTSTRAP_VERSION[[:space:]]*=[[:space:]]*\([[:alnum:].-]*\).*$/\1/p'`
-test -n "${at91bootstrap_version}" || error "Reading at91bootstrap version failed"
-echo "at91bootstrap=at91bootstrap.bin" >> "${temp_dir}/header"
-echo "at91bootstrap-version=${at91bootstrap_version}" >> "${temp_dir}/header"
-uboot_version=`cat "${working_dir}/buildroot/boot/uboot/uboot.mk" | \
-  sed -n -e 's/^UBOOT_VERSION[[:space:]]*=[[:space:]]*"*\([^"]*\).*$/\1/p'`
-test -n "${uboot_version}" || error "Reading u-boot version failed"
-echo "u-boot=u-boot.bin" >> "${temp_dir}/header"
-echo "u-boot-version=${uboot_version}" >> "${temp_dir}/header"
+
+info "Adding uImage..."
 uimage_version=`cat "${build_dir}/.config" | \
   sed -n -e 's/^BR2_LINUX_KERNEL_VERSION[[:space:]]*=[[:space:]]*"*\([[:alnum:].-]*\).*$/\1/p'`
 test -n "${uimage_version}" || error "Reading uimage version failed"
-echo "uimage=uImage" >> "${temp_dir}/header"
-echo "uimage-version=${uimage_version}" >> "${temp_dir}/header"
+add_image "uImage" "${uimage_version}" "${build_dir}/images/uImage" "uImage" "none" "${temp_dir}"
+test $? -eq 0 || error "Adding uImage failed"
+
+info "Adding rootfs..."
 rootfs_version=`git describe --dirty | sed -e 's/^v//' -e 's/+/-/g'`
 test -n "${rootfs_version}" || error "Reading rootfs version failed"
-echo "rootfs=rootfs.ubifs" >> "${temp_dir}/header"
-echo "rootfs-version=${rootfs_version}" >> "${temp_dir}/header"
+add_image "rootfs" "${rootfs_version}" "${build_dir}/images/rootfs.ubifs" "rootfs.ubifs.lzma" "lzma" "${temp_dir}"
+test $? -eq 0 || error "Adding rootfs failed"
 
-info "Copying files..."
-rsync -a "${build_dir}/images/"  "${temp_dir}"
-test $? -eq 0 || error "Copying package files failed"
-
-info "Creating 'data.ubifs'..."
-mkfs.ubifs -r "${build_dir}/target/mnt/data" -m 2048 -e 258048 -c 4000 -x none \
- -o "${temp_dir}/data.ubifs"
-test $? -eq 0 || error "Creating 'data.ubifs' failed"
-echo "data=data.ubifs" >> "${temp_dir}/header"
-echo "data-version=${rootfs_version}" >> "${temp_dir}/header"
-
-info "Creating archive '${release_dir}/${package_version}.tar.bz2'..."
+info "Creating archive '${release_dir}/${package_version}.img'..."
 cd "${temp_dir}"
-test $? -eq 0 || error "Changing directory to '${output_dir}' failed"
-tar -cjf "${release_dir}/${package_version}.tar.bz2" *
+test $? -eq 0 || error "Changing directory to '${temp_dir}' failed"
+tar -cf "${release_dir}/${package_version}.img" *
 test $? -eq 0 || \
-  error "Creating bzipped tar archive '${release_dir}/${package_version}.tar.bz2' failed"
+  error "Creating tar archive '${release_dir}/${package_version}.img' failed"
 
 info "Done"
 

@@ -94,7 +94,7 @@ test -n "${package_version}" || error "Reading version failed"
 
 # Build source package only if does not exist in destination directory;
 # with the exception that always build dirty (=with local changes) packages
-dirty=`cat "${package_version}" | grep -o "dirty"`
+dirty=`echo "${package_version}" | grep -o "dirty"`
 if [ ! -f "${output_dir}/${prefix}-${package_version}.tar.bz2" -o "x${dirty}" != "x" ]; then
   temp_dir=`mktemp -d`
   test $? -eq 0 || error "Creating temporary directory '${temp_dir}' failed"
