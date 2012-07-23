@@ -77,6 +77,8 @@ git_checkout()
   if [ -d "${project}" ]; then
     cd "${project}"
     test $? -eq 0 || { error "Changing directory to '${project} failed" noexit; return 1; }
+    git checkout master
+    test $? -eq 0 || { error "git checkout master for '${project} failed" noexit; return 1; }
     git pull
     test $? -eq 0 || { error "git pull for '${project}' failed" noexit; return 1; }
   else
