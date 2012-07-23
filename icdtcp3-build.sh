@@ -46,7 +46,7 @@ error()
   fi
 }
 
-gcript_version()
+script_version()
 {
   # Go to scripts directory in order to find out the script version
   if [ "x${ICDTCP3_SCRIPTS_DIR}" != "x" ]; then
