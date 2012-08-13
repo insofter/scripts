@@ -24,11 +24,11 @@ echo "make 2>&1 | tee ../night_${DATE}.make_1.log ; test \${PIPESTATUS[0]} -eq 0
 
 
 
-cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v "undef gets" > .tmp.stdio.h
-echo  "cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v 'undef gets' > .tmp.stdio.h" >> ../night_${DATE}.all.log
+cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v 'undef gets' | grep -v 'gets is a security hole' > .tmp.stdio.h
+echo  "cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v 'undef gets' | grep -v 'gets is a security hole' > .tmp.stdio.h" >> ../night_${DATE}.all.log
 
 mv .tmp.stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h
-echo ".tmp.stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h" >> ../night_${DATE}.all.log
+echo "mv .tmp.stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h" >> ../night_${DATE}.all.log
 
 
 
