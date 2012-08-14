@@ -3,7 +3,7 @@
 DATE=`date +%Y.%m.%d__%H-%M-%S`
 
 cd /home/insofter/projects/buildroot
-echo -n "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
+echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
 #przenosimy stary output
