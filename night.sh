@@ -6,11 +6,16 @@ cd /home/insofter/projects/buildroot
 echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
+#log circulate
+mv ../night_*.log ../night.log/
+
+
 #przenosimy stary output
 if [ -e output ] 
 then
-  mv output __output__${DATE}
-  echo mv output __output__${DATE} 2>&1 | tee -a ../night_${DATE}.all.log
+  mkdir -p __outputs
+  mv output __outputs/output__${DATE}
+  echo mv output __outputs/output__${DATE} 2>&1 | tee -a ../night_${DATE}.all.log
 fi
 
 
@@ -69,7 +74,7 @@ sudo beep -l 1000
 
 
 
-scp ../night_${DATE}.* ja@freeshell.de:
+scp ../night_${DATE}.* pmika@cattus.info:logs/
 
 
 
