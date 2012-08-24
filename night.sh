@@ -8,6 +8,8 @@ echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 #log circulate
 mv ../night_*.log ../night.log/
+ssh pmika@cattus.info "mv ~/logs/night* ~/logs/_old/; date > ~/logs/start"
+
 
 
 #przenosimy stary output
@@ -73,9 +75,8 @@ sudo beep -l 1000
 
 
 
-
+ssh pmika@cattus.info "rm ~/logs/start"
 scp ../night_${DATE}.* pmika@cattus.info:logs/
-
 
 
 sleep 30
