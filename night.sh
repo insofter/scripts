@@ -3,6 +3,8 @@
 DATE=`date +%Y.%m.%d__%H-%M-%S`
 
 cd /home/insofter/projects/buildroot
+git checkout icdtcp3-2011.11
+
 echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
@@ -16,9 +18,21 @@ ssh pmika@cattus.info "mv ~/logs/night* ~/logs/_old/; date > ~/logs/start"
 if [ -e output ] 
 then
   mkdir -p __outputs
-  mv output __outputs/output__${DATE}
-  echo mv output __outputs/output__${DATE} 2>&1 | tee -a ../night_${DATE}.all.log
+  if [ -e output/_about_me ]
+  then
+    mv output __outputs/`cat output/_about_me`
+    echo output __outputs/`cat output/_about_me` 2>&1 | tee -a ../night_${DATE}.all.log
+  else
+    mv output __outputs/moved_at__${DATE}
+    echo output __outputs/moved_at__${DATE} 2>&1 | tee -a ../night_${DATE}.all.log
+  fi
 fi
+
+
+mkdir output
+echo -e ${DATE}__`git log --format=%s -1 | sed 's/ /_/g; s/[^a-zA-Z0-9_]//g; s/__/_/g'` \
+  >> output/_about_me
+
 
 
 #kompilujemy całość do błedu z getsem
@@ -69,8 +83,9 @@ echo "make_relpkg end: `date +%Y.%m.%d__%H-%M-%S`" 2>&1 | tee -a ../night_${DATE
 
 echo -e "END\nstart: ${DATE}\nend: `date +%Y.%m.%d__%H-%M-%S`" 2>&1 | tee -a ../night_${DATE}.all.log
 
+echo -e ${DATE}
 
-echo -e "ls -la output/images/\n`ls -la output/images/`" | tee -a ../night_${DATE}.all.log
+echo -e "ls -lah output/images/\n`ls -la output/images/`" | tee -a ../night_${DATE}.all.log
 
 sudo beep -l 1000
 sleep 1
