@@ -51,7 +51,7 @@ else
   echo "make_1 end: `date +%Y.%m.%d__%H-%M-%S`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
-  sudo beep -l 1000
+  sudo -n beep -l 1000
   sleep 1
 
   #poprawiamy getsa (workaround)
@@ -62,7 +62,7 @@ else
   mv /tmp/${DATE}_stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h
   echo "mv /tmp/${DATE}_stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h" >> ../night_${DATE}.all.log
 
-  sudo beep -l 1000
+  sudo -n beep -l 1000
 
 
   #kompilujemy dalej
@@ -88,13 +88,13 @@ echo -e ${DATE}
 
 echo -e "ls -lah output/images/\n`ls -la output/images/`" | tee -a ../night_${DATE}.all.log
 
-sudo beep -l 1000
+sudo -n beep -l 1000
 sleep 1
-sudo beep -l 1000
+sudo -n beep -l 1000
 sleep 1
-sudo beep -l 1000
+sudo -n beep -l 1000
 sleep 1
-sudo beep -l 1000
+sudo -n beep -l 1000
 
 
 
@@ -104,4 +104,4 @@ scp ../night_${DATE}.* pmika@cattus.info:logs/
 
 sleep 30
 
-sudo shutdown -h now
+sudo -n shutdown -h now
