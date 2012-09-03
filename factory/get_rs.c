@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 		printf("couldn't open serial device %s\n", DEVICE);
 		return 10;
 	}
-	
+	int a=0;
 	while ( 1 == 1 ) {
 
 		int i;
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 			printf("-\n");
 		}
 
-		printf("\n");
+		printf("%i\n",++a);
 
 		sleep( 1 );
 	}

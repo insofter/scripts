@@ -9,7 +9,7 @@ echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
 #log circulate
-mv ../night_*.log ../night.log/
+mv ../night_*.log ../_night.log/
 ssh pmika@cattus.info "mv ~/logs/night* ~/logs/_old/; date > ~/logs/start"
 
 
@@ -20,8 +20,9 @@ then
   mkdir -p __outputs
   if [ -e output/_about_me ]
   then
-    mv output __outputs/`cat output/_about_me`
-    echo output __outputs/`cat output/_about_me` 2>&1 | tee -a ../night_${DATE}.all.log
+    ABOUT_ME=`cat output/_about_me`
+    mv output __outputs/${ABOUT_ME}
+    echo output __outputs/${ABOUT_ME} 2>&1 | tee -a ../night_${DATE}.all.log
   else
     mv output __outputs/moved_at__${DATE}
     echo output __outputs/moved_at__${DATE} 2>&1 | tee -a ../night_${DATE}.all.log
@@ -55,11 +56,11 @@ else
 
   #poprawiamy getsa (workaround)
   cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v 'undef gets' \
-    | grep -v 'gets is a security hole' > .tmp.stdio.h
+    | grep -v 'gets is a security hole' > /tmp/${DATE}_stdio.h
   echo  "cat output/build/host-m4-1.4.15/lib/stdio.in.h | grep -v 'undef gets' \
-    | grep -v 'gets is a security hole' > .tmp.stdio.h" >> ../night_${DATE}.all.log
-  mv .tmp.stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h
-  echo "mv .tmp.stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h" >> ../night_${DATE}.all.log
+    | grep -v 'gets is a security hole' > /tmp/${DATE}_stdio.h" >> ../night_${DATE}.all.log
+  mv /tmp/${DATE}_stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h
+  echo "mv /tmp/${DATE}_stdio.h output/build/host-m4-1.4.15/lib/stdio.in.h" >> ../night_${DATE}.all.log
 
   sudo beep -l 1000
 
