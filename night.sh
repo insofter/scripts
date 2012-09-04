@@ -1,6 +1,10 @@
 #!/bin/bash
 
+
 DATE=`date +%Y.%m.%d__%H-%M-%S`
+
+#tytuł terminala
+echo -ne "\033]0;"Night ${DATE}"\007"
 
 cd /home/insofter/projects/buildroot
 git checkout icdtcp3-2011.11
@@ -86,7 +90,7 @@ echo -e "END\nstart: ${DATE}\nend: `date +%Y.%m.%d__%H-%M-%S`" 2>&1 | tee -a ../
 
 echo -e ${DATE}
 
-echo -e "ls -lah output/images/\n`ls -la output/images/`" | tee -a ../night_${DATE}.all.log
+echo -e "ls -lah output/images/\n`ls -lah output/images/`" | tee -a ../night_${DATE}.all.log
 
 sudo -n beep -l 1000
 sleep 1
@@ -103,5 +107,7 @@ scp ../night_${DATE}.* pmika@cattus.info:logs/
 
 
 sleep 30
+
+echo -ne "\033]0;"Terminal"\007"
 
 sudo -n shutdown -h now
