@@ -117,6 +117,11 @@ fi
 test "x${ICDTCP3_TFTP_DIR}" != "x" || \
   error "Missing ICDTCP3_TFTP_DIR environment variable"
 
+# Copying uImage-prog to tftp directory
+info "Copying uImage-prog to tftp directory..."
+rsync -a ${ICDTCP3_SCRIPTS_DIR}/icdtcp3-uImage-prog ${ICDTCP3_TFTP_DIR}/uImage-prog
+test $? -eq 0 || error "Copying 'uImage-prog' failed"
+
 # Extract package files to tftp directory
 info "Extracting package files to tftp directory..."
 tar -C "${ICDTCP3_TFTP_DIR}" -xjf "${package_file}"
@@ -132,7 +137,8 @@ if [ "x${fs_file}" != "x" ]; then
 else
   cat /dev/null > "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
 fi
-echo "icdtcp3-flash-version=${version}" >> "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
+echo "flashing-script-version=${version}" >> "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
+echo "flashing-date=`date +'%Y/%m/%d %H:%M %Z'`" >> "${ICDTCP3_TFTP_DIR}/factory-settings.txt"
 
 # Create flash script image
 info "Creating flash-script..."
