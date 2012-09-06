@@ -38,6 +38,14 @@ mkdir output
 echo -e ${DATE}__`git log --format=%s -1 | sed 's/ /_/g; s/[^a-zA-Z0-9_]//g; s/__/_/g'` \
   >> output/_about_me
 
+#.config
+if ! [ -e .config ] 
+then
+  make icdtcp3_defconfig
+  echo "make icdtcp3_defconfig" | tee -a ../night_${DATE}.all.log
+fi
+
+
 
 
 #kompilujemy całość do błedu z getsem
