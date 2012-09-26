@@ -29,3 +29,12 @@ else
   echo Commit scripts!
 fi
 
+
+cd /home/insofter/projects/factory
+
+if git status | grep  -q "nothing to commit"
+then
+  git pull
+else
+  echo Commit factory!
+fi
