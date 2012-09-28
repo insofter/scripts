@@ -9,14 +9,15 @@ echo -ne "\033]0;"Night ${DATE}"\007"
 cd /home/insofter/projects/buildroot
 git checkout icdtcp3-2011.11
 
-echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 
 #log circulate
+mkdir -p ../_night.log
 mv ../night_*.log ../_night.log/
 ssh pmika@cattus.info "mv ~/logs/night* ~/logs/_old/; date > ~/logs/start"
 
 
+echo "pwd: `pwd`" 2>&1 | tee -a ../night_${DATE}.all.log
 
 #przenosimy stary output
 if [ -e output ] 
