@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if [ 0`df /home/insofter/projects/buildroot/ | tail -n 1 | awk '{print $4}'` -lt 4000000 ]
+then
+  echo "Error: not enough disk space"
+  exit 3
+fi
+
+
 
 DATE=`date +%Y.%m.%d__%H-%M-%S`
 
