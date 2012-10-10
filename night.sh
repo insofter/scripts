@@ -119,4 +119,4 @@ sleep 30
 
 echo -ne "\033]0;"Terminal"\007"
 
-sudo -n shutdown -h now
+#sudo -n shutdown -h now
