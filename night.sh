@@ -128,4 +128,7 @@ sleep 30
 
 echo -ne "\033]0;"Terminal"\007"
 
-#sudo -n shutdown -h now
+if [ -e /tmp/night-poweroff ]
+then
+  sudo -n shutdown -h now
+fi
